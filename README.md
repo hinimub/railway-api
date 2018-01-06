@@ -2,11 +2,7 @@
 
 *An API with various functionalities for indian railways*
 
-## Installation
-
-npm install railway
-
-##Usage
+## Usage
 
 ```js
 var railway = require('railway-api')
