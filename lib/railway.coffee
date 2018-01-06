@@ -1,116 +1,73 @@
-(->
-  request = require("request")
-  railway = {}
+/*
+var apikey_;
 
-  scanResponseCode = (responseCode, callback) ->
-    if responseCode is 200
-      callback null
-    else if responseCode is 401
-      callback "Error: Authentication error. Either your API key was invalid or you passed a wrong hash."
-    else
-      callback "Error: Quota exhausted for day"
-    return
+function setApikey(apikey) {
+  apikey_ = apikey;
+}
+*/
+var apikey_ = '123456';
 
-  # railway._apikey = '16113';
+function scanResponseCode_ (res) {
+  switch (res.response_code) {
+    case 200:
+      return res;
+    case 210:
+      return {isFailed:true, description:"Train doesn’t run on the date queried."};
+    case 211:
+      return {isFailed:true, description:"Train doesn’t have journey class queried."};
+    case 220:
+      return {isFailed:true, description:"Flushed PNR."};
+    case 221:
+      return {isFailed:true, description:"Invalid PNR."};
+    case 230:
+      return {isFailed:true, description:"Date chosen for the query is not valid for the chosen parameters."};
+    case 404:
+      return {isFailed:true, description:"Data couldn’t be loaded on our servers. No data available."};
+    case 405:
+      return {isFailed:true, description:"Data couldn’t be loaded on our servers. Request couldn’t go through."};
+    case 500:
+      return {isFailed:true, description:"Unauthorized API Key."};
+    case 501:
+      return {isFailed:true, description:"Account Expired."};
+    case 502:
+      return {isFailed:true, description:"Invalid arguments passed."};
+  }
+}
 
-  railway.setApikey = (_apikey) ->
-  	@_apikey = _apikey
-    
- railway.checkPnr = (pnrno, callback) ->
-  request "http://api.railwayapi.com/pnr_status/pnr/#{pnrno}/apikey/#{@_apikey}", (err, res) ->
-    unless err
-      response = JSON.parse res.body
-      scanResponseCode response.response_code, (resMsg) ->
-        callback resMsg, response
-        return
-    else
-      callback err, null
-  return
-      
-  railway.stationCode = (stationName, callback) ->
-    request "http://api.railwayapi.com/name_to_code/station/#{stationName}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, res.body
-      else
-        callback err, null
-      return
-    return
+function exec_ (url) {
+  var response = UrlFetchApp.fetch(url);
+  return scanResponseCode_(JSON.parse(response));
+}
 
-  railway.stationName = (stationCode, callback) ->
-    request "http://api.railwayapi.com/code_to_name/code/#{stationCode}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, res.body
-      else
-        callback err, null
-      return
-    return
+/**
+ * @param {string} pnr PNR No. ( 10 digit )
+ */
+function pnrStatus (pnr) {
+  var url = 'https://api.railwayapi.com/v2/pnr-status/pnr/'+pnr+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
 
-  railway.liveTrainStatus = (trainNo, callback) ->
-  	request "http://api.railwayapi.com/live/train/#{trainNo}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, response
-          return
-      else
-        callback err, null
-    return
+function trainRoute (train) {
+  var url = 'https://api.railwayapi.com/v2/route/train/'+train+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
 
-  railway.trainRoute = (trainNo, callback) ->
-  	request "http://api.railwayapi.com/route/train/#{trainNo}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, response
-          return
-      else
-        callback err, null
-    return
+function liveTrainStatus (train, date) {
+  var url = 'https://api.railwayapi.com/v2/live/train/'+train+'/date/'+date+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
 
-  railway.trainBetweenStations = (source, destination, callback) ->
-    request "http://api.railwayapi.com/between/source/#{source}/dest/#{destination}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, response
-          return
-      else
-        callback err, null
-    return
+function seatAvailability (train, source, dest, date, pref, quota) {
+  var url = 'https://api.railwayapi.com/v2/check-seat/train/'+train+'/source/'+source+'/dest/'+dest+'/date/'+date+'/pref/'+pref+'/quota/'+quota+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
 
-  railway.name_number = (train, callback) ->
-  	request "http://api.railwayapi.com/name_number/train/#{train}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        scanResponseCode response.response_code, (resMsg) ->
-          callback resMsg, response
-          return
-      else
-        callback err, null
-    return
-    
-  railway.seatAvailability = (trainNo, source, destination, date, type, checkQuota..., callback) ->
-    callback 'Error: Invalide Date format. Please use DD-MM-YYYY', null if validateDay(date) is false
-    if checkQuota.length is 0
-      quota = 'GN'
-    else quota = checkQuota[0]
-    request "http://api.railwayapi.com/check_seat/train/#{trainNo}/source/#{source}/dest/#{destination}/date/#{date}/class/#{type}/quota/#{quota}/apikey/#{@_apikey}", (err, res) ->
-      unless err
-        response = JSON.parse res.body
-        if response.err is false
-          scanResponseCode response.response_code, (resMsg) ->
-            callback resMsg, response
-            return
-        else
-          callback 'Error: Unable to fetch seats right now. Please try again later.', null
-      else
-        callback err, null
-    return
+function trainBetweenStations (source, dest, date) {
+  var url = 'https://api.railwayapi.com/v2/between/source/'+source+'/dest/'+dest+'/date/'+date+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
 
-  module.exports = railway
-  return
-)()
+function fareEnquiry (train, source, dest, date, pref, quota, age) {
+  var url = 'https://api.railwayapi.com/v2/fare/train/'+train+'/source/'+source+'/dest/'+dest+'/age/'+age+'/pref/'+pref+'/quota/'+quota+'/date/'+date+'/apikey/'+apikey_+'/';
+  return exec_(url);
+}
