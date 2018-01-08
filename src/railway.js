@@ -1,11 +1,8 @@
-/*
 var apikey_;
 
 function setApikey(apikey) {
   apikey_ = apikey;
 }
-*/
-var apikey_ = '123456';
 
 function scanResponseCode_ (res) {
   switch (res.response_code) {
