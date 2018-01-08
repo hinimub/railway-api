@@ -17,7 +17,7 @@ identifier.
 railway.setApikey('<API key>')
 ```
 You may register for a key at http://www.railwayapi.com/pricing/
-<!--
+
 - Check PNR status
 
 Get PNR status using 10 digit PNR No.
@@ -85,4 +85,4 @@ railway.seatAvailability = ('<trainNo>', '<source>', '<destination>', '<date>', 
 
 class: valid class code can be fetched from http://www.indianrail.gov.in/class_Code.html
 
-quota(optional: defaults to GN): valid quota code can be fetched from http://www.indianrail.gov.in/quota_Code.html -->
+quota(optional: defaults to GN): valid quota code can be fetched from http://www.indianrail.gov.in/quota_Code.html
