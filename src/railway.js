@@ -1,70 +1,106 @@
 var apikey_;
 
-function setApikey(apikey) {
-  apikey_ = apikey;
-}
-
-function scanResponseCode_ (res) {
-  switch (res.response_code) {
-    case 200:
-      return res;
-    case 210:
-      return {isFailed:true, description:"Train doesn’t run on the date queried."};
-    case 211:
-      return {isFailed:true, description:"Train doesn’t have journey class queried."};
-    case 220:
-      return {isFailed:true, description:"Flushed PNR."};
-    case 221:
-      return {isFailed:true, description:"Invalid PNR."};
-    case 230:
-      return {isFailed:true, description:"Date chosen for the query is not valid for the chosen parameters."};
-    case 404:
-      return {isFailed:true, description:"Data couldn’t be loaded on our servers. No data available."};
-    case 405:
-      return {isFailed:true, description:"Data couldn’t be loaded on our servers. Request couldn’t go through."};
-    case 500:
-      return {isFailed:true, description:"Unauthorized API Key."};
-    case 501:
-      return {isFailed:true, description:"Account Expired."};
-    case 502:
-      return {isFailed:true, description:"Invalid arguments passed."};
-  }
-}
-
-function exec_ (url) {
-  var response = UrlFetchApp.fetch(url);
-  return scanResponseCode_(JSON.parse(response));
+function scanResponseCode_ (responseCode, callback) {
+  var err = {
+    200: null,
+    210: "Train doesn’t run on the date queried.",
+    211: "Train doesn’t have journey class queried.",
+    220: "Flushed PNR.",
+    221: "Invalid PNR.",
+    230: "Date chosen for the query is not valid for the chosen parameters.",
+    404: "Data couldn’t be loaded on our servers. No data available.",
+    405: "Data couldn’t be loaded on our servers. Request couldn’t go through.",
+    500: "Unauthorized API Key.",
+    501: "Account Expired.",
+    502: "Invalid arguments passed."
+  };
+  return callback(err[responseCode]);
 }
 
 /**
- * @param {string} pnr PNR No. ( 10 digit )
+ *@param {String} API key
  */
-function pnrStatus (pnr) {
-  var url = 'https://api.railwayapi.com/v2/pnr-status/pnr/'+pnr+'/apikey/'+apikey_+'/';
-  return exec_(url);
+function setApikey(apikey) {
+  return apikey_ = apikey;
 }
 
-function trainRoute (train) {
-  var url = 'https://api.railwayapi.com/v2/route/train/'+train+'/apikey/'+apikey_+'/';
-  return exec_(url);
+/**
+ * @param {String} pnr 10 digit pnr
+ */
+function checkPnr (pnrno, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/pnr-status/pnr/'+pnrno+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, res.getContentText())
+  });
 }
 
-function liveTrainStatus (train, date) {
-  var url = 'https://api.railwayapi.com/v2/live/train/'+train+'/date/'+date+'/apikey/'+apikey_+'/';
-  return exec_(url);
+function stationCode (stationName, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/name-to-code/station/'+stationName+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContent());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, res.getContent());
+  });
 }
 
-function seatAvailability (train, source, dest, date, pref, quota) {
-  var url = 'https://api.railwayapi.com/v2/check-seat/train/'+train+'/source/'+source+'/dest/'+dest+'/date/'+date+'/pref/'+pref+'/quota/'+quota+'/apikey/'+apikey_+'/';
-  return exec_(url);
+function stationName (stationCode, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/code-to-name/code/'+stationCode+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContent());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, res.getContentText());
+  });
 }
 
-function trainBetweenStations (source, dest, date) {
-  var url = 'https://api.railwayapi.com/v2/between/source/'+source+'/dest/'+dest+'/date/'+date+'/apikey/'+apikey_+'/';
-  return exec_(url);
+function liveTrainStatus (trainNo, date, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/live/train/'+trainNo+'/date/'+date+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, response);
+  });
 }
 
-function fareEnquiry (train, source, dest, date, pref, quota, age) {
-  var url = 'https://api.railwayapi.com/v2/fare/train/'+train+'/source/'+source+'/dest/'+dest+'/age/'+age+'/pref/'+pref+'/quota/'+quota+'/date/'+date+'/apikey/'+apikey_+'/';
-  return exec_(url);
+function trainRoute (trainNo) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/route/train/'+trainNo+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, response);
+  });
 }
+
+function trainBetweenStations (source, destination, date, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/between/source/'+source+'/dest/'+destination+'/date/'+date+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, response);
+  });
+}
+
+function name_number (train, callback) {
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/name-number/train/'+train+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg){
+    return callback(resMsg, response);
+  });
+}
+
+function seatAvailability () {
+  var slice = [].slice;
+  var callback, checkQuota, date, destination, i, quota, source, trainNo, type;
+  trainNo = arguments[0], source = arguments[1], destination = arguments[2], date = arguments[3], type = arguments[4], checkQuota = 7 <= arguments.length ? slice.call(arguments, 5, i = arguments.length - 1) : (i = 5, []), callback = arguments[i++];
+  if (validateDay_(date) === false) {
+    return callback('Error: Invalide Date format. Please use DD-MM-YYYY', null);
+  }
+  if (checkQuota.length === 0) {
+    quota = 'GN';
+  } else {
+    quota = checkQuota[0];
+  }
+  var res = UrlFetchApp.fetch('https://api.railwayapi.com/v2/check-seat/train/'+trainNo+'/source/'+source+'/dest/'+destination+'/date/'+date+'/pref/'+type+'/quota/'+quota+'/apikey/'+apikey_+'/');
+  var response = JSON.parse(res.getContentText());
+  return scanResponseCode_(response.response_code, function(resMsg) {
+    return callback(resMsg, response);
+  });
+}
+
+// ---
+// generated by coffee-script 1.9.2
